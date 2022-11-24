@@ -44,9 +44,9 @@ class DBPipeline(object):
 
     def spider_opened(self, spider):
         print("spider {} opened".format(spider.name))
-        path = os.path.join(self.directory, '{}_{}.db'.format(spider.name, spider.city))
+        path = os.path.join(self.directory, '{}-{}.db'.format(spider.name, spider.city))
         self.database = dataset.connect('sqlite:///' + path)
-        self.table = self.database[spider.city]
+        self.table = self.database[spider.district]
 
     def spider_closed(self, spider):
         print("spider {} closed".format(spider.name))

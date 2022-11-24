@@ -30,21 +30,43 @@ def get_city_info(city_id):
     }
 
     data = get_data(url, payload, method='POST')
+    print(data)
+
     city_info = None
     for a_city in data['city_info']['info']:
+        print('{} = {}'.format(a_city['city_name'], a_city['city_id']))
         if str(a_city['city_id']) == city_id:
             city_info = a_city
             break
 
     for a_city in data['city_config_all']['list']:
+        # print('{} = {} = {}'.format(a_city['city_name'], a_city['abbr'], a_city['city_id']))
         if str(a_city['city_id']) == city_id:
             city_info['city_abbr'] = a_city['abbr']
             break
 
-    print(city_info)
+    # print(city_info)
     return city_info
 
 
 if __name__ == '__main__':
     city_id = "310000"
-    get_city_info(city_id)
+    city_info = get_city_info(city_id)
+    city_district = dict()
+    city_bizcircle = dict()
+    for district in city_info['district']:
+        district_quanpin = str(district['district_quanpin'])
+        district_id = str(district['district_id'])
+        if 'shanghaizhoubian' == district_quanpin:
+            print("don't need shanghai zhou bian")
+        else:
+            # print('district_quanpin = {} , district_id = {}'.format(district_quanpin, district_id))
+            city_district[district_quanpin] = str(district_id)
+            for bizcircle in district['bizcircle']:
+                bizcircle_name = str(bizcircle['bizcircle_name'])
+                bizcircle_id = str(bizcircle['bizcircle_id'])
+                # print('bizcircle_name = {} , bizcircle_id = {}'.format(bizcircle_name, bizcircle_id))
+                city_bizcircle[bizcircle_name] = str(bizcircle_id)
+
+    # print(city_district)
+    # print(city_bizcircle)

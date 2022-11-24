@@ -17,6 +17,7 @@
 # limitations under the License.
 
 import json
+import re
 
 import scrapy
 from scrapy import Selector
@@ -26,10 +27,10 @@ from datetime import datetime
 from house.items import HouseItem
 
 
-class LianjiaSpider(scrapy.Spider):
+class Lianjia(scrapy.Spider):
     name = 'lianjia'
 
-    def __init__(self, city=None, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(name=None, **kwargs)
 
         self.count = dict()
@@ -89,7 +90,6 @@ class LianjiaSpider(scrapy.Spider):
             url = self.base_url + link
             print("parse trading area url = ", url)
             yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=1))
-            break
 
     def parse_village_list(self, response, page):
         """提取小区链接"""
@@ -108,8 +108,10 @@ class LianjiaSpider(scrapy.Spider):
         # 翻页获取小区链接
         page_data = sel.css(".house-lst-page-box::attr(page-data)").extract_first()
         page_data = json.loads(page_data)
-        if page_data['curPage'] < page_data['totalPage']:
+        print("page = {}/{}".format(page_data['curPage'], page_data['totalPage']))
+        if int(page_data['curPage']) < int(page_data['totalPage']):
             url = response.meta["ref"] + 'pg' + str(page_data['curPage'] + 1)
+            # print('翻页获取小区链接 = ', url)
             yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=page_data['curPage']))
 
     def parse_district(self, response: TextResponse):
@@ -169,9 +171,9 @@ class LianjiaSpider(scrapy.Spider):
         # 标题
         house['title'] = sel.css('.title-wrapper .title .main::text').extract_first()
         # 总价
-        house['total_price'] = sel.css('.overview .content .price .total::text').extract_first()
+        house['total_price'] = float(sel.css('.overview .content .price .total::text').extract_first())
         # 单价
-        house['unit_price'] = sel.css('.overview .content .unitPrice .unitPriceValue::text').extract_first()
+        house['unit_price'] = int(sel.css('.overview .content .unitPrice .unitPriceValue::text').extract_first())
 
         location_info = sel.css('.overview .content .aroundInfo .areaName .info').extract_first()
         location_info_list = []
@@ -187,9 +189,8 @@ class LianjiaSpider(scrapy.Spider):
                 if save:
                     location_info_list.append(split2)
 
-        house['location'] = location_info_list[0]
-        house['sub_location'] = location_info_list[1]
-        house['sub_location2'] = location_info_list[2]
+        house['district'] = location_info_list[0]
+        house['bizcircle'] = location_info_list[1]
 
         # 小区
         house['xiaoqu'] = sel.css('.overview .content .aroundInfo .communityName a.info::text').extract_first()
@@ -205,6 +206,8 @@ class LianjiaSpider(scrapy.Spider):
         house['flood'] = sel.css('#introduction .base .content ul li:nth-child(2)::text').extract_first()
         # 建筑面积
         house['building_area'] = sel.css('#introduction .base .content ul li:nth-child(3)::text').extract_first()
+        # 建造时间
+        house['building_year'] = re.findall(r'\d+', sel.css("div[class='subInfo noHidden']::text").extract_first())[0]
         # 户型结构
         house['structure'] = sel.css('#introduction .base .content ul li:nth-child(4)::text').extract_first()
         # 套内面积
@@ -251,7 +254,7 @@ class LianjiaSpider(scrapy.Spider):
         house['follow_number'] = sel.css('#favCount::text').extract_first()
         # 看房人数(多少人看过)
         house['look_number'] = sel.css('#cartCount::text').extract_first()
-        #
+        # 爬数据时间
         house['crawl_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         yield house

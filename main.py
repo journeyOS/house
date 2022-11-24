@@ -26,7 +26,7 @@ def parseargs():
     usage = "usage: %prog [options] arg1 arg2"
     parser = optparse.OptionParser(usage=usage)
 
-    buildoptiongroup = optparse.OptionGroup(parser, "git push to gerrit options")
+    buildoptiongroup = optparse.OptionGroup(parser, "scrapy options")
 
     buildoptiongroup.add_option("-c", "--city", dest="city",
                                 help="city", default="sh")

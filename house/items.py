@@ -26,18 +26,22 @@ class HouseItem(scrapy.Item):
     house_url = scrapy.Field()
     # 标题
     title = scrapy.Field()
-    # 售价
+    # 总价
     total_price = scrapy.Field()
+    # 单价
     unit_price = scrapy.Field()
-
     # 区域
     # 如：松江
-    location = scrapy.Field()
+    district = scrapy.Field()
+    # 区域ID
+    # district_id = scrapy.Field()
+    # 商圈
     # 如：泗泾
-    sub_location = scrapy.Field()
-    # 如：外环线外
-    # 应该不需要
-    sub_location2 = scrapy.Field()
+    # lianjia就是这么起的英文的，虽然觉得trading area更合适
+    # 但对于中国人来说，他这个叫法更能让人理解
+    bizcircle = scrapy.Field()
+    # 商圈ID
+    # bizcircle_id = scrapy.Field()
 
     # 小区
     xiaoqu = scrapy.Field()
@@ -53,6 +57,8 @@ class HouseItem(scrapy.Item):
     flood = scrapy.Field()
     # 建筑面积
     building_area = scrapy.Field()
+    # 建造时间
+    building_year = scrapy.Field()
     # 户型结构
     structure = scrapy.Field()
     # 套内面积
