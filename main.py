@@ -33,7 +33,7 @@ def parseargs():
     buildoptiongroup.add_option("-t", "--type", dest="type",
                                 help="type", default="ershoufang")
     buildoptiongroup.add_option("-d", "--district", dest="district",
-                                help="district", default="jiading")
+                                help="district", default="songjiang")
 
     parser.add_option_group(buildoptiongroup)
 
@@ -50,6 +50,7 @@ def main():
 
     cmdline.execute(
         "scrapy crawl lianjia --nolog -a city={} -a type={} -a district={}".format(city, type, district).split())
+
     return 0
 
 

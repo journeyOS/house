@@ -56,6 +56,7 @@ class HouseItem(scrapy.Item):
     # 所在楼层
     flood = scrapy.Field()
     # 建筑面积
+    _building_area = scrapy.Field()
     building_area = scrapy.Field()
     # 建造时间
     building_year = scrapy.Field()

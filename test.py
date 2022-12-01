@@ -20,8 +20,9 @@
 import re
 
 def test():
-    s = '2011年建/板楼'
-    result = re.findall(r'\d+', s)[0]
+    s = '96.46㎡'
+    # result = re.findall(r'\d+', s)
+    result = float(s.replace("㎡", ""))
     print(result)
 
 

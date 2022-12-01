@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from scrapy import cmdline
 
 from house.base.net_utils import get_data
 
@@ -26,7 +27,7 @@ def get_city_info(city_id):
 
     payload = {
         'params': '{{"city_id": {}, "mobile_type": "android", "version": "8.0.1"}}'.format(city_id),
-        'fields': '{"city_info": "", "city_config_all": ""}'
+        'fields': '{"city_info": ""}'
     }
 
     data = get_data(url, payload, method='POST')
@@ -38,37 +39,59 @@ def get_city_info(city_id):
             city_info = a_city
             break
 
-    for a_city in data['city_config_all']['list']:
-        # print('{} = {} = {}'.format(a_city['city_name'], a_city['abbr'], a_city['city_id']))
-        if str(a_city['city_id']) == city_id:
-            city_info['city_abbr'] = a_city['abbr']
-            break
-
-    # print(city_info)
-    return city_info
-
-
-if __name__ == '__main__':
-    city_id = "310000"
-    city_info = get_city_info(city_id)
-    city_district = dict()
-    city_bizcircle = dict()
+    city_district = []
     for district in city_info['district']:
-
         district_quanpin = str(district['district_quanpin'])
-        district_id = str(district['district_id'])
         if 'shanghaizhoubian' == district_quanpin:
             print("don't need shanghai zhou bian")
         else:
-            # print('district_quanpin = {} , district_id = {}'.format(district_quanpin, district_id))
-            print(' # {}'.format(district['district_name']))
-            print(' # district = \'{}\''.format(district_quanpin))
-            city_district[district_quanpin] = str(district_id)
-            for bizcircle in district['bizcircle']:
-                bizcircle_name = str(bizcircle['bizcircle_name'])
-                bizcircle_id = str(bizcircle['bizcircle_id'])
-                # print('bizcircle_name = {} , bizcircle_id = {}'.format(bizcircle_name, bizcircle_id))
-                city_bizcircle[bizcircle_name] = str(bizcircle_id)
+            city_district.append(district_quanpin)
 
-    # print(city_district)
-    # print(city_bizcircle)
+    return city_district
+
+
+if __name__ == '__main__':
+    # city_id = "310000"
+    # city_info = get_city_info(city_id)
+    #
+    # for district in city_info:
+    #     print('district = {}'.format(district))
+
+    # 浦东
+    # district = 'pudong'
+    # 闵行
+    # district = 'minhang'
+    # 宝山
+    # district = 'baoshan'
+    # 徐汇
+    # district = 'xuhui'
+    # 普陀
+    # district = 'putuo'
+    # 杨浦
+    # district = 'yangpu'
+    # 长宁
+    # district = 'changning'
+    # 松江
+    # district = 'songjiang'
+    # 嘉定
+    # district = 'jiading'
+    # 黄浦
+    # district = 'huangpu'
+    # 静安
+    # district = 'jingan'
+    # 虹口
+    # district = 'hongkou'
+    # 青浦
+    district = 'qingpu'
+    # 奉贤
+    # district = 'fengxian'
+    # 金山
+    # district = 'jinshan'
+    # 崇明
+    # district = 'chongming'
+
+    # sf1a3a4a5p3
+    # 限制只看普通住宅、70-130㎡、300-400W
+    cmdline.execute(
+        "scrapy crawl lianjia --nolog -a city=sh -a type=ershoufang -a district={} -a restrict=sf1a3a4a5p3".format(
+            district).split())

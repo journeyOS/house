@@ -56,10 +56,26 @@ class Lianjia(scrapy.Spider):
             setattr(self, 'district', 'songjiang')
             self.district = 'songjiang'
 
+        # 限制条件
+        # sf系列为用途，如
+        #   sf1 : 普通住宅
+        # p系列为售价，如
+        #   p3  : 300-400W
+        # a系列为面积，如
+        #   a3  : 70-90㎡
+        #   a4  : 90-110㎡
+        #   a5  : 110-130㎡
+        # 连在一起的顺序请自行查看链家网
+        # sf1a3a4a5p3
+        self.restrict = getattr(self, 'restrict', None)
+
         self.base_url = "https://{}.lianjia.com".format(self.city)
 
     def start_requests(self):
-        url = "https://{}.lianjia.com/{}/{}".format(self.city, self.type, self.district)
+        if self.restrict:
+            url = "https://{}.lianjia.com/{}/{}/{}".format(self.city, self.type, self.district, self.restrict)
+        else:
+            url = "https://{}.lianjia.com/{}/{}".format(self.city, self.type, self.district)
         print("start requests, url = ", url)
         if self.type == "ershoufang":
             yield scrapy.Request(url, self.parse_district)
@@ -77,43 +93,6 @@ class Lianjia(scrapy.Spider):
         #     print(url)
         #     yield scrapy.Request(url, self.parse_house_list, cb_kwargs=dict(page=page))
 
-    def parse_trading_area_links(self, response):
-        """提取商圈链接"""
-        # 松江新城
-        # 洞泾
-        # 佘山
-        # ...
-
-        sel = Selector(response)
-        links = sel.css("div[data-role='ershoufang'] div:nth-child(2) a::attr(href)").extract()
-        for link in links:
-            url = self.base_url + link
-            print("parse trading area url = ", url)
-            yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=1))
-
-    def parse_village_list(self, response, page):
-        """提取小区链接"""
-        sel = Selector(response)
-        links = sel.css(".listContent .xiaoquListItem .img::attr(href)").extract()
-        for link in links:
-            village_id = link.split("/")[-2]
-            print("parse village url = ", link)
-            # 小区房源 https://sh.lianjia.com/ershoufang/5011000000891/
-            url = self.base_url + "/ershoufang/" + village_id + "/"
-            yield scrapy.Request(url=url, callback=self.parse_house_list, cb_kwargs=dict(page=page))
-            # 成交房源(需要登陆)
-            # url = self.base_url + "/chengjiao/" + village_id + "/"
-            # yield scrapy.Request(url=url, callback=self.parse_house_list, cb_kwargs=dict(page=page))
-
-        # 翻页获取小区链接
-        page_data = sel.css(".house-lst-page-box::attr(page-data)").extract_first()
-        page_data = json.loads(page_data)
-        print("page = {}/{}".format(page_data['curPage'], page_data['totalPage']))
-        if int(page_data['curPage']) < int(page_data['totalPage']):
-            url = response.meta["ref"] + 'pg' + str(page_data['curPage'] + 1)
-            # print('翻页获取小区链接 = ', url)
-            yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=page_data['curPage']))
-
     def parse_district(self, response: TextResponse):
         """解析区总页码"""
         sel = Selector(response)
@@ -121,13 +100,19 @@ class Lianjia(scrapy.Spider):
         # 链接分页
         page_data = sel.css(".house-lst-page-box::attr(page-data)").extract_first()
         page_data = json.loads(page_data)
+
         if page_data['totalPage'] > 1:
             # 直接用第一页的数据：
             # 1. 直接调parse_house_list会有问题
             # 2. 再写一次parse_house_list里的代码又很麻烦
             # 所以就索性再爬一次第一页，反正也就只有第一页多爬一次而已
             for page in range(1, page_data['totalPage'] + 1):
-                url = "https://{}.lianjia.com/{}/{}/pg{}/".format(self.city, self.type, self.district, page)
+                if self.restrict:
+                    url = "https://{}.lianjia.com/{}/{}/pg{}{}/".format(self.city, self.type, self.district, page,
+                                                                        self.restrict)
+                else:
+                    url = "https://{}.lianjia.com/{}/{}/pg{}/".format(self.city, self.type, self.district, page)
+
                 print("parse district url = ", url)
                 yield scrapy.Request(url, self.parse_house_list, cb_kwargs=dict(page=page))
 
@@ -205,7 +190,9 @@ class Lianjia(scrapy.Spider):
         # 所在楼层
         house['flood'] = sel.css('#introduction .base .content ul li:nth-child(2)::text').extract_first()
         # 建筑面积
-        house['building_area'] = sel.css('#introduction .base .content ul li:nth-child(3)::text').extract_first()
+        building_area = sel.css('#introduction .base .content ul li:nth-child(3)::text').extract_first()
+        house['_building_area'] = building_area
+        house['building_area'] = float(building_area.replace("㎡", ""))
         # 建造时间
         house['building_year'] = re.findall(r'\d+', sel.css("div[class='subInfo noHidden']::text").extract_first())[0]
         # 户型结构
@@ -258,3 +245,40 @@ class Lianjia(scrapy.Spider):
         house['crawl_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         yield house
+
+    def parse_trading_area_links(self, response):
+        """提取商圈链接"""
+        # 松江新城
+        # 洞泾
+        # 佘山
+        # ...
+
+        sel = Selector(response)
+        links = sel.css("div[data-role='ershoufang'] div:nth-child(2) a::attr(href)").extract()
+        for link in links:
+            url = self.base_url + link
+            print("parse trading area url = ", url)
+            yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=1))
+
+    def parse_village_list(self, response, page):
+        """提取小区链接"""
+        sel = Selector(response)
+        links = sel.css(".listContent .xiaoquListItem .img::attr(href)").extract()
+        for link in links:
+            village_id = link.split("/")[-2]
+            print("parse village url = ", link)
+            # 小区房源 https://sh.lianjia.com/ershoufang/5011000000891/
+            url = self.base_url + "/ershoufang/" + village_id + "/"
+            yield scrapy.Request(url=url, callback=self.parse_house_list, cb_kwargs=dict(page=page))
+            # 成交房源(需要登陆)
+            # url = self.base_url + "/chengjiao/" + village_id + "/"
+            # yield scrapy.Request(url=url, callback=self.parse_house_list, cb_kwargs=dict(page=page))
+
+        # 翻页获取小区链接
+        page_data = sel.css(".house-lst-page-box::attr(page-data)").extract_first()
+        page_data = json.loads(page_data)
+        print("page = {}/{}".format(page_data['curPage'], page_data['totalPage']))
+        if int(page_data['curPage']) < int(page_data['totalPage']):
+            url = response.meta["ref"] + 'pg' + str(page_data['curPage'] + 1)
+            # print('翻页获取小区链接 = ', url)
+            yield scrapy.Request(url=url, callback=self.parse_village_list, cb_kwargs=dict(page=page_data['curPage']))
